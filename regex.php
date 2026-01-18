@@ -21,7 +21,6 @@
                 $str = $this->str_extract($expression);
                 $this->machine = new DKA();
                 $this->machine->makeMachine($str);
-                $this->machine->changeState('a');
             }
         }
 
@@ -115,7 +114,7 @@
                         break;
                     }
                 }
-                if($isUniq) {
+                if($isUniq && $template[$i] != '.') {
                     $this->alphobet[] = $template[$i];
                 }
             }
@@ -133,8 +132,9 @@
             //luck
             $alphobet_keys = [];
             for ($i = 0; $i < count($this->alphobet); $i++) {
-                $alphobet_keys[ $this->alphobet[$i]] = '0';
+                $alphobet_keys[$this->alphobet[$i]] = '0';
             }
+            $alphobet_keys['.'] = '0';
             $this->table_transition['-1'] = $alphobet_keys;
             for ($i = 0; $i < count($this->states)-1; $i++) {
                 $key = $this->states[$i];
@@ -149,33 +149,53 @@
 
             //unluck
             foreach ($this->table_transition as $state => &$row) {
-                if ($state === '-1') continue;
-
-                foreach ($this->alphobet as $c) {
-                    if ($row[$c] != '0') continue;
-
-                    $k = strlen($state);
-                    $prefix = $state;
-
-                    while ($k > 0 && $c != $prefix[$k-1]) {
-                        $k--;
-                        $prefix = substr($prefix, 0, $k);
+                foreach ($row as $char => $to) {
+                    if ($to != '0') {
+                        continue;
                     }
-
-                    $row[$c] = $k;
+                    if ($state === '-1') {
+                        $row[$char] = 0;
+                        continue;
+                    }
+                    $candidate = $state . $char;
+                    $next = 0;
+                    for ($len = strlen($candidate); $len > 0; $len--) {
+                        $suffix = substr($candidate, -$len);
+                        foreach ($this->states as $i => $prefix) {
+                            if ($prefix === $suffix) {
+                                $next = $i + 1;
+                                break 2;
+                            }
+                        }
+                    }
+                    $row[$char] = $next;
                 }
             }
             unset($row);
-
+            $state = "";
+            for ($i = 0; $i < strlen($template); $i++) {
+                if($template[$i] == '.') {
+                    foreach ($this->table_transition[$state] as $key => $value) {
+                        $this->table_transition[$state][$key] = $i+1;
+                    }
+                }
+                $state .= $template[$i];
+            }
+            //print_r($this->table_transition);
         }
 
         public function changeState($char) {
+            $state = '';
             if($this->current_state == 0) {
-                $this->current_state = $this->table_transition['-1'][$char];
+                $state = '-1';
             }
             else {
-                $this->current_state = $this->table_transition[$this->states[$this->current_state-1]][$char];
+                $state = $this->states[$this->current_state-1];
             }
+            if(!in_array($char, $this->alphobet))
+                $this->current_state = $this->table_transition[$state]['.'];
+            else
+                $this->current_state = $this->table_transition[$state][$char];
             if($this->current_state == count($this->states)) {
                 $this->isTerminal = true;
                 $this->current_state = 0;
@@ -191,8 +211,8 @@
         }
     }
     
-    $txt = "adasdd";
-    $regex = new Regex("/asd/");
+    $txt = "adaqdd";
+    $regex = new Regex("/a[q]d/");
     if($regex->test($txt)) {
         echo 1;
     }
