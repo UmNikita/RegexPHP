@@ -105,28 +105,57 @@
         private bool $isTerminal = false;
 
         public function makeMachine($template) {
-            //alphobet
+            $tokens = [];
             for ($i = 0; $i < strlen($template); $i++) {
-                $isUniq = true;
-                for ($j = 0; $j < count($this->alphobet); $j++) {
-                    if($this->alphobet[$j] == $template[$i]) {
-                        $isUniq = false;
-                        break;
+                if($template[$i] == '[') {
+                    $count = 0;
+                    for ($j = $i; $j < strlen($template); $j++) {
+                        if($template[$j] == ']') {
+                            break;
+                        }
+                        $count++;
+                        $token .= $template[$j];
                     }
+                    $i += $count;
+                    $token .= ']';
+                    $tokens[] = $token;
+                    continue;
                 }
-                if($isUniq && $template[$i] != '.') {
-                    $this->alphobet[] = $template[$i];
+                else {
+                    $tokens[] = $template[$i];
                 }
             }
 
-            //set states
+            //alphobet
             for ($i = 0; $i < strlen($template); $i++) {
-                if($i == 0) {
-                    $this->states[] = $template[0];
+                if($template[$i] == '[' || $template[$i] == ']' || $template[$i] == '.') {
                     continue;
                 }
-                $this->states[] = $this->states[$i-1].$template[$i];
+                if($template[$i] == '-') {
+                    $i++;
+                    $digits = range($template[$i-2], $template[$i]);
+                    for ($j = 0; $j < count($digits); $j++) {
+                        if(!in_array($digits[$j], $this->alphobet)) {
+                            $this->alphobet[] = $digits[$j];
+                        }
+                    }
+                    continue;
+                }
+                if(!in_array($template[$i], $this->alphobet)) {
+                    $this->alphobet[] = $template[$i];
+                }
             }
+            // print_r($this->alphobet);
+
+            //set states
+            for ($i = 0; $i < count($tokens); $i++) {
+                if($i == 0) {
+                    $this->states[] = $tokens[0];
+                    continue;
+                }
+                $this->states[] = $this->states[$i-1].$tokens[$i];
+            }
+            //print_r($this->states);
 
             //set table transiton
             //luck
@@ -144,8 +173,27 @@
             foreach ($this->table_transition as $key => $value) {
                 $symbol = $this->states[$pointer];
                 $pointer++;
+                if($symbol[strlen($symbol)-1] == ']') {
+                    $j = strlen($symbol)-2;
+                    while ($symbol[$j] != '[') {
+                        if($symbol[$j] == '-') {
+                            $digits = range($symbol[$j-1], $symbol[$j+1]);
+                            for ($k = 0; $k < count($digits)-1; $k++) {
+                                $this->table_transition[$key][$digits[$k]] = $pointer;
+                            }
+                            $j--;
+                        }
+                        else {
+                            $this->table_transition[$key][$symbol[$j]] = $pointer;
+                            $j--;
+                        }
+                        
+                    }
+                    continue;
+                }
                 $this->table_transition[$key][$symbol[strlen($symbol)-1]] = $pointer;
             }
+            //print_r($this->table_transition);
 
             //unluck
             foreach ($this->table_transition as $state => &$row) {
@@ -172,6 +220,8 @@
                 }
             }
             unset($row);
+            //print_r($this->table_transition);
+
             $state = "";
             for ($i = 0; $i < strlen($template); $i++) {
                 if($template[$i] == '.') {
@@ -211,8 +261,8 @@
         }
     }
     
-    $txt = "adaqdd";
-    $regex = new Regex("/a[q]d/");
+    $txt = "adwzaqd";
+    $regex = new Regex("/z[a-d]q/");
     if($regex->test($txt)) {
         echo 1;
     }
