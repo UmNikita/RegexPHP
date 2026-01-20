@@ -11,15 +11,13 @@
 
         private StateRegex $state = StateRegex::Invalid;
         private $valid_limiters = ['/', '#', '~', '%', '!', '|'];
-        private $expression = "";
-        private DKA $machine;
+        private Machine $machine;
 
-        public function __construct(string $expression = null) {
+        public function __construct(string $expression) {
             $this->state = $this->check_str_valid($expression);
-            $this->expression = $expression;
             if($this->state == StateRegex::Valid) {
                 $str = $this->str_extract($expression);
-                $this->machine = new DKA();
+                $this->machine = new Machine();
                 $this->machine->makeMachine($str);
             }
         }
@@ -96,7 +94,7 @@
         }
     }
 
-    class DKA {
+    class Machine {
 
         private $current_states = [0];
         private $states = [];
