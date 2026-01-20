@@ -98,8 +98,9 @@
 
     class DKA {
 
-        private $current_state = 0;
+        private $current_states = [0];
         private $states = [];
+        private $states_is_qvants = [];
         private $table_transition = [];
         private $alphobet = [];
         private bool $isTerminal = false;
@@ -122,13 +123,22 @@
                     continue;
                 }
                 else {
-                    $tokens[] = $template[$i];
+                    if($template[$i+1] == '*') {
+                        $tokens[] = $template[$i].'*';
+                        $i++;
+                    }
+                    else if($template[$i+1] == '?') {
+                        $tokens[] = $template[$i].'?';
+                        $i++;
+                    }
+                    else
+                        $tokens[] = $template[$i];
                 }
             }
 
             //alphobet
             for ($i = 0; $i < strlen($template); $i++) {
-                if($template[$i] == '[' || $template[$i] == ']' || $template[$i] == '.') {
+                if($template[$i] == '[' || $template[$i] == ']' || $template[$i] == '.' || $template[$i] == '*' || $template[$i] == '?') {
                     continue;
                 }
                 if($template[$i] == '-') {
@@ -145,17 +155,24 @@
                     $this->alphobet[] = $template[$i];
                 }
             }
-            // print_r($this->alphobet);
 
             //set states
             for ($i = 0; $i < count($tokens); $i++) {
+                $state = "";
                 if($i == 0) {
-                    $this->states[] = $tokens[0];
-                    continue;
+                    $state = $tokens[0];
                 }
-                $this->states[] = $this->states[$i-1].$tokens[$i];
+                else {
+                    $state = $this->states[$i-1].$tokens[$i];
+                }
+                $this->states[] = $state;
+                if($state[strlen($state)-1] == '*' || $state[strlen($state)-1] == '?') {
+                    $this->states_is_qvants[$state] = true;
+                }
+                else {
+                    $this->states_is_qvants[$state] = false;
+                }
             }
-            //print_r($this->states);
 
             //set table transiton
             //luck
@@ -191,9 +208,13 @@
                     }
                     continue;
                 }
+                else if($symbol[strlen($symbol)-1] == '*' || $symbol[strlen($symbol)-1] == '?') {
+                    $this->table_transition[$key]['eps'] = $pointer;
+                    $this->table_transition[$key][$symbol[strlen($symbol)-2]] = $pointer;
+                    continue;
+                }
                 $this->table_transition[$key][$symbol[strlen($symbol)-1]] = $pointer;
             }
-            //print_r($this->table_transition);
 
             //unluck
             foreach ($this->table_transition as $state => &$row) {
@@ -220,7 +241,6 @@
                 }
             }
             unset($row);
-            //print_r($this->table_transition);
 
             $state = "";
             for ($i = 0; $i < strlen($template); $i++) {
@@ -231,24 +251,31 @@
                 }
                 $state .= $template[$i];
             }
-            //print_r($this->table_transition);
         }
 
         public function changeState($char) {
-            $state = '';
-            if($this->current_state == 0) {
-                $state = '-1';
-            }
-            else {
-                $state = $this->states[$this->current_state-1];
-            }
-            if(!in_array($char, $this->alphobet))
-                $this->current_state = $this->table_transition[$state]['.'];
-            else
-                $this->current_state = $this->table_transition[$state][$char];
-            if($this->current_state == count($this->states)) {
-                $this->isTerminal = true;
-                $this->current_state = 0;
+            for ($i = 0; $i < count($this->current_states); $i++) {
+                $state = '';
+                if($this->current_states[$i] == 0) {
+                    $state = '-1';
+                }
+                else {
+                    $state = $this->states[$this->current_states[$i]-1];
+                }
+                if(!in_array($char, $this->alphobet))
+                    $this->current_states[$i] = $this->table_transition[$state]['.'];
+                else
+                    $this->current_states[$i] = $this->table_transition[$state][$char];
+                if($this->states_is_qvants[$this->states[$this->current_states[$i]-1]]) {
+                    $this->current_states[] = $this->table_transition[$state]['eps'];
+                }
+                if($this->current_states[$i] == count($this->states)) {
+                    $this->isTerminal = true;
+                    for ($i = 0; $i < count($this->current_states); $i++) {
+                        $this->current_states[$i] = 0;
+                    }
+                    return;
+                }
             }
         }
 
@@ -261,12 +288,12 @@
         }
     }
     
-    $txt = "adwzaqd";
-    $regex = new Regex("/z[a-d]q/");
-    if($regex->test($txt)) {
-        echo 1;
-    }
-    else {
-        echo 0;
-    }
+    // $txt = "adwzaqd";
+    // $regex = new Regex("/ab/");
+    // if($regex->test($txt)) {
+    //     echo 1;
+    // }
+    // else {
+    //     echo 0;
+    // }
 ?>
